@@ -1,0 +1,54 @@
+# Docker file to build smart job navigator scraper service
+#
+# docker buildx build --platform linux/amd64 -t polovinko1980/sjn-scraper:develop.latest -f DockerFile .
+#
+# docker run -d -p 8081:8081--name sjn-scraper polovinko1980/sjn-scraper:develop.latest
+#
+# docker push polovinko1980/sjn-scraper:develop.latest
+#
+# docker pull polovinko1980/sjn-scraper:develop.latest
+
+# Use the official Python image as the base image
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y wget unzip jq gnupg curl
+
+# Install Chrome for browser-based load
+# Ref: https://linux.how2shout.com/install-google-chrome-on-debian-12-bookworm/
+RUN curl -fSsL https://dl.google.com/linux/linux_signing_key.pub \
+    | gpg --dearmor | tee /usr/share/keyrings/google-chrome.gpg >> /dev/null && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+    > /etc/apt/sources.list.d/google-chrome.list && \
+    apt update && \
+    apt -y install google-chrome-stable && \
+    google-chrome --version
+
+# Install Chromedriver
+# Ref: https://googlechromelabs.github.io/chrome-for-testing/
+# Need to fix that to use dynamic version in future, not static one
+RUN wget -O chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.69/linux64/chromedriver-linux64.zip && \
+    unzip -j chromedriver.zip chromedriver-linux64/chromedriver -d /usr/local/bin/ && \
+    rm -f chromedriver.zip && \
+    chromedriver --version
+
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY src/data_producers /app/data_producers
+COPY src/models /app/models
+COPY src/utils /app/utils
+
+COPY requirements.txt /app
+COPY src/api.py /app
+COPY src/handlers.py /app
+
+# Install any needed dependencies specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose the port that Uvicorn will listen on
+EXPOSE 8081
+
+# Command to start Uvicorn and run the Fast API application
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8081", "--workers", "1", "--timeout-keep-alive", "120"]
