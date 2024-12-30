@@ -7,6 +7,23 @@ from utils.browser_provider import BrowserProvider, BrowserOptions
 logger = logging.getLogger(__name__)
 
 
+def simulate_click_at_random_coordinates(browser):
+    js_code = """
+    function simulateClick(x, y) {
+        var clickEvent = new MouseEvent('click', {
+            'view': window,
+            'bubbles': true,
+            'cancelable': true,
+            'clientX': x,
+            'clientY': y
+        });
+        document.elementFromPoint(x, y).dispatchEvent(clickEvent);
+    }
+    simulateClick(100, 200);
+    """
+    browser.execute_script(js_code)
+
+
 class AuthorizerBase:
     def __init__(self, browser_options: BrowserOptions):
         self.browser = self.initialize_browser(browser_options)
@@ -78,23 +95,7 @@ class LinkedInAuthorizer(AuthorizerBase):
         )
 
     def dismiss_widget(self):
-        self.simulate_click_at_random_coordinates()
-
-    def simulate_click_at_random_coordinates(self):
-        js_code = """
-        function simulateClick(x, y) {
-            var clickEvent = new MouseEvent('click', {
-                'view': window,
-                'bubbles': true,
-                'cancelable': true,
-                'clientX': x,
-                'clientY': y
-            });
-            document.elementFromPoint(x, y).dispatchEvent(clickEvent);
-        }
-        simulateClick(100, 200);
-        """
-        self.browser.execute_script(js_code)
+        simulate_click_at_random_coordinates(self.browser)
 
 class OtherDashboardAuthorizer(AuthorizerBase):
     """
