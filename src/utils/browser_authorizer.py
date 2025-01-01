@@ -94,9 +94,6 @@ class LinkedInAuthorizer(AuthorizerBase):
             current_url in target_url
         )
 
-    def dismiss_widget(self):
-        simulate_click_at_random_coordinates(self.browser)
-
 class OtherDashboardAuthorizer(AuthorizerBase):
     """
     Class to manage browser sessions on other dashboards.
