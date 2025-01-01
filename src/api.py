@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI, BackgroundTasks, Header
+from fastapi.middleware.cors import CORSMiddleware
 import uuid
-from typing import Dict
+
 
 from models.request_models import JobScraperPayload, ProfileUpdatePayload
 from models.response_models import ScraperResponsePayload
@@ -12,6 +15,18 @@ from handlers import (
 
 app = FastAPI()
 app.secret_key = str(uuid.uuid4())
+
+# Dispatcher service
+dispatcher_url = os.getenv("DISPATCHER_SERVICE_URL")
+
+# Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[dispatcher_url],
+    allow_credentials=True,
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
 
 
 def process_linkedin_search(request_payload: JobScraperPayload, user_id: str) -> None:
