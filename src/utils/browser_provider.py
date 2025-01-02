@@ -61,7 +61,10 @@ class BrowserProvider:
             "--disable-low-res-tiling",
             "--log-level=3",
             "--silent",
-            "--start-maximized"
+            "--start-maximized",
+            "--enable-unsafe-swiftshader",
+            "--disable-3d-apis",
+            "--disable-audio-track-processing"
         ]
         for option in basic_options:
             options.add_argument(option)
