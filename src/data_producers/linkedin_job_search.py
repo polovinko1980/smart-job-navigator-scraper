@@ -90,7 +90,7 @@ class LinkedInJobSearchScraper:
                 job_index = 1
                 job_page += 1
             except Exception as e:
-                self.browser.screenshot(f"/tmp/{self.__name__}")
+                self.browser.screenshot(f"/tmp/LinkedInJobSearchScraper")
                 logger.error(f"Unexpected exception: {e}. {traceback.format_exc()}")
 
     def _last_page(self, current_page) -> bool:
