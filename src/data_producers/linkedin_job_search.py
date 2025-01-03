@@ -57,7 +57,7 @@ class LinkedInJobSearchScraper:
                 if len(job_id) == 10:
                     new_urls.append(self._add_normalized_job_url(job_id))
             except selenium.common.exceptions.StaleElementReferenceException:
-                logger.warning(f"Unable to get job id from {e.html}")
+                logger.warning(f"Unable to get job id from {e}")
 
         return new_urls
 
