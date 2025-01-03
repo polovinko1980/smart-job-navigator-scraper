@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict, Callable
 
 import requests
@@ -46,6 +47,11 @@ class BaseScrapeHandler:
             requests.post(self.payload.callbackUrl, headers=headers, json=payload)
 
 class LinkedInScrapeActionsHandler(BaseScrapeHandler):
+
+    USER_PROCESSING_LIMIT = 100
+
+    LINKEDIN_SEARCH_URL = "https://www.linkedin.com/jobs/search/?"
+
     def process(self):
         action_handlers: Dict[str, Callable] = {
             ActionEnum.LINKEDIN_JOB_SEARCH: self._handle_linkedin_job_search,
@@ -57,35 +63,41 @@ class LinkedInScrapeActionsHandler(BaseScrapeHandler):
             return action_handler()
         raise RuntimeError(f"Not supported action: {self.payload.action}")
 
-    def _handle_linkedin_job_search(self) -> SearchResults:
-        job_endpoints = self._fetch_job_endpoints()
-        return SearchResults(urls=job_endpoints)
+    def _handle_linkedin_job_search(self) -> None:
+        self._fetch_linkedin_search_endpoints()
 
-    def _handle_linkedin_job_details(self) -> DetailsResults:
-        job_details = self._fetch_linkedin_job_details()
-        return DetailsResults(jobDetails=job_details)
+    def _handle_linkedin_job_details(self) -> None:
+        self._fetch_linkedin_job_details()
 
-    def _fetch_job_endpoints(self) -> List[str]:
+    def _fetch_linkedin_search_endpoints(self) -> None:
         browser = self._initialize_linkedin_browser()
-        job_endpoints = set()
         try:
             for entry_point in self.payload.entryPoints:
-                urls = self._fetch_job_postings(browser, entry_point)
-                self._notify_completion(SearchResults(urls=urls))
-                job_endpoints.update(urls)
+                self._fetch_search_pages(browser, entry_point)
         finally:
             self._cleanup_browser(browser)
-        return list(job_endpoints)
 
-    def _fetch_job_postings(self, browser, entry_point: str) -> List[str]:
-        job_search_scraper = LinkedInJobSearchScraper(
-            browser=browser,
-            search_results_url=entry_point,
-            wait_time=5,
-        )
-        return job_search_scraper.fetch_new_job_postings(
-            is_authorized_user=self.payload.authorizedUser
-        )
+    def _fetch_search_pages(self, browser, entry_point: str) -> None:
+        found_urls, start, page_size = 0, 0, 7
+        job_search_scraper = LinkedInJobSearchScraper(browser=browser, wait_time=5)
+
+        while found_urls < self.USER_PROCESSING_LIMIT:
+            time.sleep(2)
+
+            search_url = f"{entry_point}&start={start}"
+            browser.visit(search_url)
+            if not self._is_url_visible(browser, search_url):
+                raise RuntimeError(f"Unable to navigate to {search_url}")
+
+            if self.payload.authorizedUser:
+                new_urls = job_search_scraper.scrape_as_authorized_user()
+            else:
+                new_urls = job_search_scraper.scrape_as_incognito_user()
+            found_urls += len(new_urls)
+            if not new_urls:
+                break
+            start += page_size
+            self._notify_completion(SearchResults(urls=new_urls))
 
     def _fetch_linkedin_job_details(self) -> List[JobDetails]:
         browser = self._initialize_linkedin_browser()
@@ -106,6 +118,17 @@ class LinkedInScrapeActionsHandler(BaseScrapeHandler):
             entry_point=entry_point,
             is_authorized_user=self.payload.authorizedUser,
         )
+
+    def _is_url_visible(self, browser, url):
+        for attempt in range(5):
+            page_html = browser.html
+            if "ERR_TOO_MANY_REDIRECTS" in page_html or "HTTP ERROR 429" in page_html:
+                browser.visit(url)
+                time.sleep(5)
+                continue
+            elif self.LINKEDIN_SEARCH_URL in browser.url:
+                return True
+        return False
 
 class OtherDashboardsScrapeHandler(BaseScrapeHandler):
     def process(self):
