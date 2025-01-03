@@ -3,6 +3,8 @@ import re
 import sys
 from typing import List
 
+import selenium
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -48,12 +50,15 @@ class LinkedInJobSearchScraper:
 
 
     def scrape_as_authorized_user(self) -> List[str]:
-        new_urls =  [
-            self._add_normalized_job_url(e[self.AUTHORIZED_JOB_CSS_SELECTOR])
-            for e in
-            self.browser.find_by_xpath(f"//div[@{self.AUTHORIZED_JOB_CSS_SELECTOR}]")
-            if e and e[self.AUTHORIZED_JOB_CSS_SELECTOR] != "search"
-        ]
+        new_urls = []
+        for e in self.browser.find_by_xpath(f"//div[@{self.AUTHORIZED_JOB_CSS_SELECTOR}]"):
+            try:
+                job_id = e[self.AUTHORIZED_JOB_CSS_SELECTOR]
+                if len(job_id) == 10:
+                    new_urls.append(self._add_normalized_job_url(job_id))
+            except selenium.common.exceptions.StaleElementReferenceException:
+                logger.warning(f"Unable to get job id from {e.html}")
+
         return new_urls
 
     def scrape_as_incognito_user(self) -> List[str]:

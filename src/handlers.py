@@ -99,19 +99,16 @@ class LinkedInScrapeActionsHandler(BaseScrapeHandler):
             start += page_size
             self._notify_completion(SearchResults(urls=new_urls))
 
-    def _fetch_linkedin_job_details(self) -> List[JobDetails]:
+    def _fetch_linkedin_job_details(self) -> None:
         browser = self._initialize_linkedin_browser()
         job_details_scraper = LinkedInJobPostingScraper(browser=browser, wait_time=5)
-        job_details_list = []
 
         try:
             for entry_point in self.payload.entryPoints:
                 job_details = self._fetch_job_details(job_details_scraper, entry_point)
                 self._notify_completion(job_details)
-                job_details_list.append(job_details)
         finally:
             self._cleanup_browser(browser)
-        return job_details_list
 
     def _fetch_job_details(self, job_details_scraper, entry_point: str) -> JobDetails:
         return job_details_scraper.fetch_linkedin_job_details(
